@@ -84,11 +84,6 @@ const Index = ({
               </Badge>
             </div>
 
-            {!isWalletConnected && (
-              <div className="pt-8">
-                <WalletConnect />
-              </div>
-            )}
           </div>
         </div>
       </section>
