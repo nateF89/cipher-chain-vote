@@ -2,7 +2,7 @@ import { WalletConnect } from "@/components/WalletConnect";
 import { ChainSelector } from "@/components/ChainSelector";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Globe, Lock, Users, Vote, ArrowRight } from "lucide-react";
+import { Globe, Lock, Users, Vote, ArrowRight, Shield } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroImage from "@/assets/governance-hero-bg.jpg";
 import logoImage from "@/assets/logo.svg";
