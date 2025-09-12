@@ -6,6 +6,7 @@ import { ChainSelector } from "@/components/ChainSelector";
 import { WalletConnect } from "@/components/WalletConnect";
 import { Plus, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
+import logoImage from "@/assets/logo.svg";
 
 const mockProposals = [
   {
@@ -81,7 +82,14 @@ const Proposals = ({
                 Back to Home
               </Link>
               <div className="w-px h-6 bg-border"></div>
-              <h1 className="text-2xl font-bold text-foreground">Active Proposals</h1>
+              <div className="flex items-center gap-3">
+                <img 
+                  src={logoImage} 
+                  alt="Cipher Chain Vote Logo" 
+                  className="w-8 h-8"
+                />
+                <h1 className="text-2xl font-bold text-foreground">Active Proposals</h1>
+              </div>
             </div>
             <div className="flex items-center gap-4">
               <ChainSelector selectedChain={selectedChain} onChainSelect={onChainSelect} />

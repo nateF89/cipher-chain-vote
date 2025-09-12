@@ -36,9 +36,9 @@ Add the following environment variables in the Vercel dashboard:
 
 ```env
 VITE_CHAIN_ID=11155111
-VITE_RPC_URL=https://sepolia.infura.io/v3/b18fb7e6ca7045ac83c41157ab93f990
-VITE_WALLET_CONNECT_PROJECT_ID=2ec9743d0d0cd7fb94dee1a7e6d33475
-VITE_INFURA_API_KEY=b18fb7e6ca7045ac83c41157ab93f990
+VITE_RPC_URL=https://sepolia.infura.io/v3/YOUR_INFURA_API_KEY
+VITE_WALLET_CONNECT_PROJECT_ID=YOUR_WALLET_CONNECT_PROJECT_ID
+VITE_INFURA_API_KEY=YOUR_INFURA_API_KEY
 VITE_RPC_URL_ALT=https://1rpc.io/sepolia
 ```
 
@@ -78,9 +78,9 @@ The project uses the following build configuration:
 | Variable | Description | Example Value |
 |----------|-------------|---------------|
 | `VITE_CHAIN_ID` | Ethereum chain ID for Sepolia testnet | `11155111` |
-| `VITE_RPC_URL` | Primary RPC URL for blockchain connection | `https://sepolia.infura.io/v3/...` |
-| `VITE_WALLET_CONNECT_PROJECT_ID` | WalletConnect project ID | `2ec9743d0d0cd7fb94dee1a7e6d33475` |
-| `VITE_INFURA_API_KEY` | Infura API key for RPC access | `b18fb7e6ca7045ac83c41157ab93f990` |
+| `VITE_RPC_URL` | Primary RPC URL for blockchain connection | `https://sepolia.infura.io/v3/YOUR_INFURA_API_KEY` |
+| `VITE_WALLET_CONNECT_PROJECT_ID` | WalletConnect project ID | `YOUR_WALLET_CONNECT_PROJECT_ID` |
+| `VITE_INFURA_API_KEY` | Infura API key for RPC access | `YOUR_INFURA_API_KEY` |
 | `VITE_RPC_URL_ALT` | Alternative RPC URL | `https://1rpc.io/sepolia` |
 
 ## Troubleshooting

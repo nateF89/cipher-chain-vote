@@ -2,8 +2,10 @@ import { WalletConnect } from "@/components/WalletConnect";
 import { ChainSelector } from "@/components/ChainSelector";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Globe, Lock, Users, Vote, ArrowRight } from "lucide-react";
+import { Globe, Lock, Users, Vote, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
 import heroImage from "@/assets/governance-hero-bg.jpg";
+import logoImage from "@/assets/logo.svg";
 
 interface IndexProps {
   isWalletConnected: boolean;
@@ -37,11 +39,13 @@ const Index = ({
         <div className="relative z-10 container mx-auto px-4 text-center">
           {/* Navigation */}
           <nav className="absolute top-8 left-1/2 transform -translate-x-1/2 w-full max-w-4xl flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-button rounded-lg flex items-center justify-center">
-                <Shield className="w-5 h-5 text-foreground" />
-              </div>
-              <span className="text-xl font-bold text-foreground">CrossGov</span>
+            <div className="flex items-center gap-3">
+              <img 
+                src={logoImage} 
+                alt="Cipher Chain Vote Logo" 
+                className="w-10 h-10"
+              />
+              <span className="text-xl font-bold text-foreground">CipherChain</span>
             </div>
             <div className="flex items-center gap-4">
               <ChainSelector selectedChain={selectedChain} onChainSelect={onChainSelect} />
@@ -99,16 +103,17 @@ const Index = ({
                 Join the future of cross-chain governance and vote on active proposals
               </p>
               <div className="flex gap-4 justify-center">
-                <Button 
-                  variant="neon" 
-                  size="lg" 
-                  className="gap-2"
-                  onClick={() => window.location.href = '/proposals'}
-                >
-                  <Vote className="w-5 h-5" />
-                  View Active Proposals
-                  <ArrowRight className="w-5 h-5" />
-                </Button>
+                <Link to="/proposals">
+                  <Button 
+                    variant="neon" 
+                    size="lg" 
+                    className="gap-2"
+                  >
+                    <Vote className="w-5 h-5" />
+                    View Active Proposals
+                    <ArrowRight className="w-5 h-5" />
+                  </Button>
+                </Link>
               </div>
             </div>
           </div>

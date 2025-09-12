@@ -1,0 +1,44 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="cipherGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8B5CF6;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#06B6D4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#10B981;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="voteGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F59E0B;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#EF4444;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="chainGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8B5CF6;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#06B6D4;stop-opacity:0.8" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background with rounded corners -->
+  <rect width="48" height="48" rx="12" fill="url(#cipherGradient)"/>
+  
+  <!-- Shield base -->
+  <path d="M24 4L9 12V27C9 35.25 16.5 42 24 42C31.5 42 39 35.25 39 27V12L24 4Z" fill="white" fill-opacity="0.95"/>
+  
+  <!-- Shield border -->
+  <path d="M24 4L9 12V27C9 35.25 16.5 42 24 42C31.5 42 39 35.25 39 27V12L24 4Z" stroke="url(#cipherGradient)" stroke-width="2" fill="none"/>
+  
+  <!-- Voting checkmark -->
+  <path d="M16.5 27L21 31.5L31.5 21" stroke="url(#voteGradient)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Chain links (blockchain representation) -->
+  <circle cx="12" cy="18" r="2.5" fill="url(#chainGradient)"/>
+  <circle cx="36" cy="18" r="2.5" fill="url(#chainGradient)"/>
+  <circle cx="12" cy="30" r="2.5" fill="url(#chainGradient)"/>
+  <circle cx="36" cy="30" r="2.5" fill="url(#chainGradient)"/>
+  
+  <!-- Connection lines -->
+  <path d="M14.5 18L33.5 18" stroke="url(#chainGradient)" stroke-width="1.5" opacity="0.6"/>
+  <path d="M14.5 30L33.5 30" stroke="url(#chainGradient)" stroke-width="1.5" opacity="0.6"/>
+  
+  <!-- Privacy dots (encryption representation) -->
+  <circle cx="18" cy="12" r="1" fill="url(#cipherGradient)" opacity="0.6"/>
+  <circle cx="30" cy="12" r="1" fill="url(#cipherGradient)" opacity="0.6"/>
+  <circle cx="24" cy="8" r="1" fill="url(#cipherGradient)" opacity="0.6"/>
+</svg>
