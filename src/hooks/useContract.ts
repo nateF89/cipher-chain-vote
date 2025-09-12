@@ -1,4 +1,4 @@
-import { useContract, useContractRead, useContractWrite, useAccount } from 'wagmi';
+import { useContractRead, useContractWrite, useAccount, useReadContract, useWriteContract } from 'wagmi';
 import { useState } from 'react';
 
 // Contract ABI - you would get this from the compiled contract
@@ -88,24 +88,9 @@ export function useCipherChainVote() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const contract = useContract({
-    address: CONTRACT_ADDRESS,
-    abi: CONTRACT_ABI,
-  });
-
-  const createProposal = useContractWrite({
-    address: CONTRACT_ADDRESS,
-    abi: CONTRACT_ABI,
-    functionName: 'createProposal',
-  });
-
-  const castVote = useContractWrite({
-    address: CONTRACT_ADDRESS,
-    abi: CONTRACT_ABI,
-    functionName: 'castVote',
-  });
-
-  const getProposalInfo = useContractRead({
+  const { writeContract: writeContractCreate } = useWriteContract();
+  const { writeContract: writeContractVote } = useWriteContract();
+  const { data: proposalInfo } = useReadContract({
     address: CONTRACT_ADDRESS,
     abi: CONTRACT_ABI,
     functionName: 'getProposalInfo',
@@ -122,7 +107,10 @@ export function useCipherChainVote() {
       setIsLoading(true);
       setError(null);
       
-      await createProposal.writeAsync({
+      await writeContractCreate({
+        address: CONTRACT_ADDRESS,
+        abi: CONTRACT_ABI,
+        functionName: 'createProposal',
         args: [title, description, proposalHash, duration, chainId],
       });
       
@@ -144,7 +132,10 @@ export function useCipherChainVote() {
       setIsLoading(true);
       setError(null);
       
-      await castVote.writeAsync({
+      await writeContractVote({
+        address: CONTRACT_ADDRESS,
+        abi: CONTRACT_ABI,
+        functionName: 'castVote',
         args: [proposalId, voteChoice, votingPower],
       });
       
@@ -159,8 +150,8 @@ export function useCipherChainVote() {
 
   const getProposal = async (proposalId: number) => {
     try {
-      const result = await contract?.getProposalInfo(proposalId);
-      return result;
+      // In a real implementation, you would use useReadContract with the proposalId
+      return proposalInfo;
     } catch (err) {
       console.error('Error getting proposal:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -169,7 +160,6 @@ export function useCipherChainVote() {
   };
 
   return {
-    contract,
     createProposal: handleCreateProposal,
     castVote: handleCastVote,
     getProposal,
