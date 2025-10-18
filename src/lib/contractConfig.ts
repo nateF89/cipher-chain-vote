@@ -1,5 +1,5 @@
 // Contract configuration
-export const CONTRACT_ADDRESS = "0x26B3317aABc29Fa33833BBf802c4883797D255ff"; // Deployed contract address
+export const CONTRACT_ADDRESS = "0x46B04788f2E78Eb9e9E38a4bfE684381f818aD9E"; // Deployed contract address
 export const CONTRACT_ABI = require('./contractABI.json').abi;
 
 // Network configuration

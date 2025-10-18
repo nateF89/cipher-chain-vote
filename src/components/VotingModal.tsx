@@ -1,16 +1,10 @@
 import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle, Shield, Lock, Send } from "lucide-react";
-import { useCipherChainVote } from "@/hooks/useContract";
+import { useAccount } from "wagmi";
 import { useZamaInstance } from "@/hooks/useZamaInstance";
 import { useEthersSigner } from "@/hooks/useEthersSigner";
-import { useAccount } from "wagmi";
 import { Contract } from "ethers";
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from "@/lib/contractConfig";
 import { toast } from "sonner";
@@ -20,11 +14,11 @@ interface VotingModalProps {
   onClose: () => void;
   proposalId: string;
   proposalTitle: string;
-  onSubmitVote: (vote: "for" | "against", reason?: string) => void;
+  onSubmitVote: (vote: "yes" | "no" | "abstain", reason?: string) => void;
 }
 
 export function VotingModal({ isOpen, onClose, proposalId, proposalTitle, onSubmitVote }: VotingModalProps) {
-  const [vote, setVote] = useState<"for" | "against" | "">("");
+  const [vote, setVote] = useState<"yes" | "no" | "abstain" | "">("");
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { address } = useAccount();
@@ -39,19 +33,13 @@ export function VotingModal({ isOpen, onClose, proposalId, proposalTitle, onSubm
     
     setIsSubmitting(true);
     try {
-      // Convert vote to number (0: against, 1: for)
-      const voteChoice = vote === "for" ? 1 : 0;
-      const votingPower = 1; // Default voting power, in real app this would be calculated
-      
-      // Create encrypted input
+      const voteChoice = vote === "yes" ? 1 : vote === "no" ? 2 : 3;
+
       const input = instance.createEncryptedInput(CONTRACT_ADDRESS, address);
-      input.add8(voteChoice); // Add vote choice (0 or 1)
-      input.add32(votingPower); // Add voting power
+      input.add32(BigInt(voteChoice));
       
-      // Encrypt the input
       const encryptedInput = await input.encrypt();
       
-      // Convert handles to proper format
       const convertHex = (handle: any): string => {
         if (typeof handle === 'string') {
           return handle.startsWith('0x') ? handle : `0x${handle}`;
@@ -67,22 +55,19 @@ export function VotingModal({ isOpen, onClose, proposalId, proposalTitle, onSubm
       const proof = `0x${Array.from(encryptedInput.inputProof)
         .map(b => b.toString(16).padStart(2, '0')).join('')}`;
       
-      // Get signer and create contract instance
       const signer = await signerPromise;
       const contract = new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
       
-      // Cast encrypted vote
       const tx = await contract.castVote(
         parseInt(proposalId),
         handles[0], // voteChoice handle
-        handles[1], // votingPower handle
         proof
       );
       
       await tx.wait();
       
       toast.success("Encrypted vote submitted successfully!");
-      onSubmitVote(vote as "for" | "against", reason);
+      onSubmitVote(vote as "yes" | "no" | "abstain", reason);
       
       setVote("");
       setReason("");
@@ -97,97 +82,96 @@ export function VotingModal({ isOpen, onClose, proposalId, proposalTitle, onSubm
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg bg-gradient-card border-cyber-purple/30 backdrop-blur-xl">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
-            <Shield className="w-5 h-5 text-cyber-purple" />
-            Cast Private Vote
-          </DialogTitle>
-          <DialogDescription className="text-muted-foreground">
-            Your vote will be encrypted and submitted anonymously to the blockchain.
-          </DialogDescription>
+          <DialogTitle>Cast Your Vote</DialogTitle>
         </DialogHeader>
-
-        <div className="space-y-6 mt-4">
-          <Card className="bg-glass-bg/30 border-border/50">
-            <CardContent className="p-4">
-              <h3 className="font-medium text-foreground mb-2">{proposalTitle}</h3>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="border-cyber-purple/50 text-cyber-purple">
-                  <Lock className="w-3 h-3 mr-1" />
-                  End-to-End Encrypted
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="space-y-4">
-            <Label className="text-base font-medium text-foreground">Your Vote</Label>
-            <RadioGroup value={vote} onValueChange={(value) => setVote(value as "for" | "against")} className="space-y-3">
-              <div className="flex items-center space-x-3 p-3 rounded-lg border border-border/50 hover:border-cyber-green/50 transition-colors">
-                <RadioGroupItem value="for" id="for" className="border-cyber-green text-cyber-green" />
-                <Label htmlFor="for" className="flex-1 cursor-pointer">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-cyber-green" />
-                    <span className="font-medium">Vote For</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">Support this proposal</p>
-                </Label>
-              </div>
-              <div className="flex items-center space-x-3 p-3 rounded-lg border border-border/50 hover:border-destructive/50 transition-colors">
-                <RadioGroupItem value="against" id="against" className="border-destructive text-destructive" />
-                <Label htmlFor="against" className="flex-1 cursor-pointer">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-destructive" />
-                    <span className="font-medium">Vote Against</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-1">Oppose this proposal</p>
-                </Label>
-              </div>
-            </RadioGroup>
+        
+        <div className="space-y-6">
+          <div>
+            <h3 className="font-semibold text-lg mb-2">{proposalTitle}</h3>
+            <p className="text-sm text-gray-600">Choose your vote for this proposal</p>
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="reason" className="text-base font-medium text-foreground">
-              Reasoning (Optional)
-            </Label>
-            <Textarea 
+          
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <button
+                type="button"
+                onClick={() => setVote("yes")}
+                className={`p-4 rounded-lg border-2 transition-colors ${
+                  vote === "yes"
+                    ? "border-green-500 bg-green-50 text-green-700"
+                    : "border-gray-200 hover:border-green-300"
+                }`}
+              >
+                <div className="text-center">
+                  <div className="text-2xl mb-2">👍</div>
+                  <div className="font-semibold">Yes</div>
+                  <div className="text-sm text-gray-600">Support this proposal</div>
+                </div>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setVote("no")}
+                className={`p-4 rounded-lg border-2 transition-colors ${
+                  vote === "no"
+                    ? "border-red-500 bg-red-50 text-red-700"
+                    : "border-gray-200 hover:border-red-300"
+                }`}
+              >
+                <div className="text-center">
+                  <div className="text-2xl mb-2">👎</div>
+                  <div className="font-semibold">No</div>
+                  <div className="text-sm text-gray-600">Oppose this proposal</div>
+                </div>
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setVote("abstain")}
+                className={`p-4 rounded-lg border-2 transition-colors ${
+                  vote === "abstain"
+                    ? "border-yellow-500 bg-yellow-50 text-yellow-700"
+                    : "border-gray-200 hover:border-yellow-300"
+                }`}
+              >
+                <div className="text-center">
+                  <div className="text-2xl mb-2">🤷</div>
+                  <div className="font-semibold">Abstain</div>
+                  <div className="text-sm text-gray-600">Neutral on this proposal</div>
+                </div>
+              </button>
+            </div>
+          </div>
+          
+          <div>
+            <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
+              Reason (Optional)
+            </label>
+            <Textarea
               id="reason"
-              placeholder="Explain your vote (this will be encrypted)"
+              placeholder="Explain your vote..."
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              className="bg-glass-bg/50 border-border/50 focus:border-cyber-purple/50"
-              rows={3}
+              className="min-h-[100px]"
             />
           </div>
-
-          <div className="p-3 bg-cyber-purple/10 border border-cyber-purple/20 rounded-lg">
-            <p className="text-xs text-muted-foreground">
-              🔒 Your vote is encrypted using zero-knowledge proofs and submitted anonymously across multiple chains for maximum privacy and security.
-            </p>
-          </div>
-
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={onClose} className="flex-1">
+          
+          <div className="flex justify-end space-x-3">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
               Cancel
             </Button>
-            <Button 
-              variant="cyber" 
+            <Button
               onClick={handleSubmit}
-              disabled={!vote || isSubmitting || isLoading}
-              className="flex-1 gap-2"
+              disabled={!vote || isSubmitting}
+              className="bg-blue-600 hover:bg-blue-700"
             >
-              {isSubmitting ? (
-                <>
-                  <Lock className="w-4 h-4 animate-spin" />
-                  Encrypting...
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  Submit Vote
-                </>
-              )}
+              {isSubmitting ? "Submitting..." : "Submit Vote"}
             </Button>
           </div>
         </div>

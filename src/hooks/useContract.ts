@@ -1,90 +1,472 @@
-import { useAccount, useReadContract, useWriteContract } from 'wagmi';
-import { useState } from 'react';
-import { CONTRACT_ADDRESS, CONTRACT_ABI } from '@/lib/contractConfig';
+import { useState, useEffect } from 'react';
+import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt, usePublicClient } from 'wagmi';
+import { useZamaInstance } from './useZamaInstance';
+import { useEthersSigner } from './useEthersSigner';
+import { encryptVoteData, decryptVoteData } from '../lib/fhe-utils';
+import { CONTRACT_ADDRESS } from '../lib/contractConfig';
+import { CONTRACT_ABI } from '../lib/contractABI.json';
 
-export function useCipherChainVote() {
-  const { address } = useAccount();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export interface Proposal {
+  id: string;
+  title: string;
+  description: string;
+  yesVotes: number;
+  noVotes: number;
+  abstainVotes: number;
+  totalVotes: number;
+  isActive: boolean;
+  isEnded: boolean;
+  proposer: string;
+  startTime: number;
+  endTime: number;
+  quorumThreshold: number;
+  resultsRevealed: boolean;
+  category: string;
+  priority: string;
+  tags: string;
+  votingOptions: string;
+}
 
-  const { writeContract: writeContractCreate } = useWriteContract();
-  const { writeContract: writeContractVote } = useWriteContract();
-  const { data: proposalInfo } = useReadContract({
+export const useContract = () => {
+  const { address, isConnected } = useAccount();
+  const { writeContractAsync, data: hash, isPending, error } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash,
+  });
+  const { instance } = useZamaInstance();
+  const signerPromise = useEthersSigner();
+
+  // Create a new proposal
+  const createProposal = async (
+    title: string,
+    description: string,
+    duration: number,
+    quorumThreshold: number,
+    category: string = "governance",
+    priority: string = "medium",
+    tags: string = "",
+    votingOptions: string = "yes_no_abstain",
+    proposalHash: string = "",
+    chainId: number = 11155111
+  ) => {
+    if (!isConnected) throw new Error('Wallet not connected');
+    
+    const durationInSeconds = duration * 24 * 60 * 60;
+    
+    return writeContractAsync({
+      address: CONTRACT_ADDRESS,
+      abi: CONTRACT_ABI,
+      functionName: 'createProposal',
+      args: [
+        title,
+        description,
+        BigInt(durationInSeconds),
+        BigInt(quorumThreshold),
+        category,
+        priority,
+        tags,
+        votingOptions,
+        proposalHash,
+        BigInt(chainId)
+      ],
+    });
+  };
+
+  // Register user as voter if not already registered
+  const registerSelf = async () => {
+    if (!isConnected || !address) throw new Error('Wallet not connected');
+    
+    try {
+      console.log('🔄 Registering user as voter...');
+      
+      const result = await writeContractAsync({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        abi: CONTRACT_ABI,
+        functionName: 'registerSelf',
+        args: []
+      });
+      
+      console.log('✅ User registered as voter:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ Failed to register as voter:', error);
+      throw error;
+    }
+  };
+
+  // Cast a vote with FHE encryption (requires user to be registered first)
+  const castVote = async (proposalId: number, voteChoice: number) => {
+    if (!isConnected || !address) throw new Error('Wallet not connected');
+    if (!instance) throw new Error('FHE instance not ready');
+    
+    try {
+      console.log('🚀 Starting FHE vote encryption...', { proposalId, voteChoice, address, contractAddress: CONTRACT_ADDRESS });
+      
+      // Encrypt the vote using FHE
+      const { handles, inputProof } = await encryptVoteData(
+        instance,
+        CONTRACT_ADDRESS,
+        address,
+        { voteChoice }
+      );
+      
+      console.log('✅ FHE encryption completed', { 
+        handlesCount: handles.length, 
+        proofLength: inputProof.length,
+        firstHandle: handles[0]?.substring(0, 10) + '...'
+      });
+      
+      const args = [
+        BigInt(proposalId),
+        handles[0] as `0x${string}`,
+        inputProof as `0x${string}`
+      ];
+      
+      console.log('📊 Contract call arguments:', {
+        proposalId: args[0].toString(),
+        voteChoice: args[1].substring(0, 10) + '...',
+        proofLength: args[2].length
+      });
+      
+      const result = await writeContractAsync({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        abi: CONTRACT_ABI,
+        functionName: 'castVote',
+        args
+      });
+      
+      console.log('✅ Contract call submitted:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ FHE encryption or contract call failed:', error);
+      console.error('📊 Error details:', {
+        name: error?.name,
+        message: error?.message,
+        stack: error?.stack,
+        proposalId,
+        voteChoice
+      });
+      throw new Error(`Failed to cast vote: ${error.message || 'Please try again.'}`);
+    }
+  };
+
+  // Register a voter
+  const registerVoter = async (voterAddress: string) => {
+    if (!isConnected) throw new Error('Wallet not connected');
+    
+    return writeContractAsync({
+      address: CONTRACT_ADDRESS,
+      abi: CONTRACT_ABI,
+      functionName: 'registerVoter',
+      args: [voterAddress as `0x${string}`, true],
+    });
+  };
+
+  // End a proposal
+  const endProposal = async (proposalId: number) => {
+    if (!isConnected) throw new Error('Wallet not connected');
+    
+    return writeContractAsync({
+      address: CONTRACT_ADDRESS,
+      abi: CONTRACT_ABI,
+      functionName: 'endProposal',
+      args: [BigInt(proposalId)],
+    });
+  };
+
+  // Reveal results
+  const revealResults = async (proposalId: number) => {
+    if (!isConnected) throw new Error('Wallet not connected');
+    
+    return writeContractAsync({
+      address: CONTRACT_ADDRESS,
+      abi: CONTRACT_ABI,
+      functionName: 'revealResults',
+      args: [BigInt(proposalId)],
+    });
+  };
+
+  return {
+    // Contract interaction functions
+    createProposal,
+    castVote,
+    registerVoter,
+    registerSelf,
+    endProposal,
+    revealResults,
+    
+    // Transaction state
+    hash,
+    isPending,
+    isConfirming,
+    isConfirmed,
+    error,
+    
+    // Account state
+    address,
+    isConnected,
+  };
+};
+
+// Hook for reading proposal data
+export const useProposal = (proposalId: number) => {
+  const { data, isLoading, error } = useReadContract({
     address: CONTRACT_ADDRESS,
     abi: CONTRACT_ABI,
     functionName: 'getProposalInfo',
+    args: [BigInt(proposalId)],
   });
 
-  const handleCreateProposal = async (
-    title: string,
-    description: string,
-    proposalHash: string,
-    duration: number,
-    chainId: number
-  ) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      await writeContractCreate({
-        address: CONTRACT_ADDRESS,
-        abi: CONTRACT_ABI,
-        functionName: 'createProposal',
-        args: [title, description, proposalHash, duration, chainId],
-      });
-      
-      console.log('Proposal created successfully');
-    } catch (err) {
-      console.error('Error creating proposal:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setIsLoading(false);
-    }
+  if (!data) {
+    return {
+      proposal: null,
+      isLoading,
+      error,
+    };
+  }
+
+  const [
+    title,
+    description,
+    isActive,
+    isEnded,
+    proposer,
+    startTime,
+    endTime,
+    quorumThreshold,
+    resultsRevealed,
+    finalized,
+    decryptionPending,
+    requestId,
+    category,
+    priority,
+    tags,
+    votingOptions
+  ] = data as [string, string, boolean, boolean, string, bigint, bigint, bigint, boolean, boolean, boolean, bigint, string, string, string, string];
+
+  const proposal: Proposal = {
+    id: proposalId.toString(),
+    title,
+    description,
+    yesVotes: 0, // Will be decrypted separately
+    noVotes: 0, // Will be decrypted separately
+    abstainVotes: 0, // Will be decrypted separately
+    totalVotes: 0, // Will be decrypted separately
+    isActive,
+    isEnded,
+    proposer,
+    startTime: Number(startTime),
+    endTime: Number(endTime),
+    quorumThreshold: Number(quorumThreshold),
+    resultsRevealed,
+    category,
+    priority,
+    tags,
+    votingOptions
   };
 
-  const handleCastVote = async (
-    proposalId: number,
-    voteChoice: number,
-    votingPower: number
-  ) => {
-    try {
+  return {
+    proposal,
+    isLoading,
+    error,
+  };
+};
+
+// Hook for checking if user has voted
+export const useHasVoted = (proposalId: number) => {
+  const { address } = useAccount();
+  
+  const { data, isLoading, error } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: 'hasVoterVotedOnProposal',
+    args: [address as `0x${string}`, BigInt(proposalId)],
+    query: {
+      enabled: !!address,
+    },
+  });
+
+  return {
+    hasVoted: data as boolean | undefined,
+    isLoading,
+    error,
+  };
+};
+
+// Hook for getting proposal count
+export const useProposalCount = () => {
+  console.log('🔍 useProposalCount: Fetching proposal count from contract...');
+  console.log('📋 Contract address:', CONTRACT_ADDRESS);
+  
+  const { data, isLoading, error } = useReadContract({
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: 'getProposalCount',
+  });
+
+  console.log('📊 Proposal count data:', data);
+  console.log('⏳ Loading state:', isLoading);
+  console.log('❌ Error state:', error);
+
+  const count = data ? Number(data) : 0;
+  console.log('🔢 Final proposal count:', count);
+
+  return {
+    count,
+    isLoading,
+    error,
+  };
+};
+
+// Hook for loading all proposals from contract - using publicClient like bloom-chain-secure
+export const useAllProposals = () => {
+  const { count: proposalCount } = useProposalCount();
+  const publicClient = usePublicClient();
+  const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    const loadAllProposals = async () => {
+      console.log('🔍 useAllProposals: Starting to load proposals...');
+      console.log('📊 Proposal count from contract:', proposalCount);
+      
+      if (!proposalCount || proposalCount === 0) {
+        console.log('⚠️ No proposals found, setting empty array');
+        setProposals([]);
+        return;
+      }
+
+      if (!publicClient) {
+        console.log('⚠️ Public client not available');
+        return;
+      }
+
+      console.log('🔄 Starting to load proposals from contract...');
       setIsLoading(true);
       setError(null);
-      
-      await writeContractVote({
-        address: CONTRACT_ADDRESS,
-        abi: CONTRACT_ABI,
-        functionName: 'castVote',
-        args: [proposalId, voteChoice, votingPower],
-      });
-      
-      console.log('Vote cast successfully');
-    } catch (err) {
-      console.error('Error casting vote:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  const getProposal = async (proposalId: number) => {
+      try {
+        const loadedProposals: Proposal[] = [];
+        
+        // Use publicClient to read contract data, similar to bloom-chain-secure project
+        for (let i = 0; i < proposalCount; i++) {
+          console.log(`🔍 Loading proposal ${i} from contract using publicClient...`);
+          try {
+            const result = await publicClient.readContract({
+              address: CONTRACT_ADDRESS as `0x${string}`,
+              abi: CONTRACT_ABI,
+              functionName: 'getProposalInfo',
+              args: [BigInt(i)]
+            });
+
+            console.log(`📊 Proposal ${i} data from contract:`, result);
+            
+            const [
+              title,
+              description,
+              isActive,
+              isEnded,
+              proposer,
+              startTime,
+              endTime,
+              quorumThreshold,
+              resultsRevealed,
+              finalized,
+              decryptionPending,
+              requestId,
+              category,
+              priority,
+              tags,
+              votingOptions
+            ] = result as [string, string, boolean, boolean, string, bigint, bigint, bigint, boolean, boolean, boolean, bigint, string, string, string, string];
+
+            loadedProposals.push({
+              id: i.toString(),
+              title,
+              description,
+              proposer,
+              startTime: Number(startTime),
+              endTime: Number(endTime),
+              quorumThreshold: Number(quorumThreshold),
+              isActive,
+              isEnded,
+              resultsRevealed,
+              category,
+              priority,
+              tags,
+              votingOptions,
+              yesVotes: 0,
+              noVotes: 0,
+              abstainVotes: 0,
+              totalVotes: 0
+            });
+            
+            console.log(`✅ Proposal ${i} loaded successfully from contract`);
+          } catch (err) {
+            console.error(`❌ Failed to load proposal ${i}:`, err);
+          }
+        }
+        
+        console.log(`📊 Total loaded proposals: ${loadedProposals.length}`);
+        setProposals(loadedProposals);
+      } catch (err) {
+        console.error('❌ Error in loadAllProposals:', err);
+        setError(err as Error);
+      } finally {
+        console.log('🏁 Finished loading proposals');
+        setIsLoading(false);
+      }
+    };
+
+    loadAllProposals();
+  }, [proposalCount, publicClient]);
+
+  return {
+    proposals,
+    isLoading,
+    error,
+  };
+};
+
+// Hook for decrypting vote counts
+export const useDecryptVoteCounts = (proposalId: number) => {
+  const { address } = useAccount();
+  const [voteCounts, setVoteCounts] = useState<{
+    yesVotes: number;
+    noVotes: number;
+    abstainVotes: number;
+    totalVotes: number;
+  } | null>(null);
+  const [isDecrypting, setIsDecrypting] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const decryptVoteCounts = async (instance: any, signer: any) => {
+    if (!address) return;
+    
+    setIsDecrypting(true);
+    setError(null);
+    
     try {
-      // In a real implementation, you would use useReadContract with the proposalId
-      return proposalInfo;
+      const counts = await decryptVoteData(
+        instance,
+        [proposalId], // This would need to be the actual encrypted handles
+        CONTRACT_ADDRESS,
+        address,
+        signer
+      );
+      setVoteCounts(counts);
     } catch (err) {
-      console.error('Error getting proposal:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
-      return null;
+      setError(err as Error);
+    } finally {
+      setIsDecrypting(false);
     }
   };
 
   return {
-    createProposal: handleCreateProposal,
-    castVote: handleCastVote,
-    getProposal,
-    isLoading,
+    voteCounts,
+    isDecrypting,
     error,
-    isConnected: !!address,
-    address,
+    decryptVoteCounts,
   };
-}
+};
