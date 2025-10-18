@@ -29,7 +29,7 @@ export const ENV_CONFIG = {
   
   // Contract addresses (from environment variables)
   CONTRACTS: {
-    cipherChainVote: getEnvVar("VITE_CONTRACT_ADDRESS", "0xC9Bb1308f2bafe4225615D088e49dC4DA8df9624")
+    cipherChainVote: getEnvVar("VITE_CONTRACT_ADDRESS", "0x5Aa01B46347CAD9fDB45eDf40804B2F6512aCB9c")
   },
   
   // Feature flags
