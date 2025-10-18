@@ -4,48 +4,10 @@ import { CreateProposalModal } from "@/components/CreateProposalModal";
 import { Button } from "@/components/ui/button";
 import { ChainSelector } from "@/components/ChainSelector";
 import { WalletConnect } from "@/components/WalletConnect";
-import { Plus, ArrowLeft } from "lucide-react";
+import { Plus, ArrowLeft, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import logoImage from "@/assets/logo.svg";
-
-const mockProposals = [
-  {
-    id: "1",
-    title: "Increase Cross-Chain Bridge Security",
-    description: "Proposal to implement additional security measures for cross-chain asset transfers and governance communications.",
-    status: "active" as const,
-    votesFor: 1250,
-    votesAgainst: 340,
-    totalVotes: 1590,
-    timeLeft: "3 days left",
-    privacy: "private" as const,
-    chain: "Ethereum"
-  },
-  {
-    id: "2", 
-    title: "Multi-Chain Treasury Allocation",
-    description: "Distribute treasury funds across multiple chains to support ecosystem growth and development initiatives.",
-    status: "active" as const,
-    votesFor: 890,
-    votesAgainst: 450,
-    totalVotes: 1340,
-    timeLeft: "5 days left",
-    privacy: "private" as const,
-    chain: "Polygon"
-  },
-  {
-    id: "3",
-    title: "Privacy Protocol Upgrade",
-    description: "Upgrade to latest zero-knowledge proof system for enhanced voting privacy and ballot encryption.",
-    status: "pending" as const,
-    votesFor: 0,
-    votesAgainst: 0,
-    totalVotes: 0,
-    timeLeft: "Starts in 2 days",
-    privacy: "private" as const,
-    chain: "Arbitrum"
-  }
-];
+import { useAllProposals, useProposalCount } from "@/hooks/useContract";
 
 interface ProposalsProps {
   isWalletConnected: boolean;
@@ -63,9 +25,68 @@ const Proposals = ({
   onVote 
 }: ProposalsProps) => {
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  
+  // Load real data from contract
+  const { proposals, isLoading: isLoadingProposals, error: proposalsError } = useAllProposals();
+  const { count: proposalCount } = useProposalCount();
+
+  console.log('🔍 Proposals page: Loading real data from contract...');
+  console.log('📊 Proposal count:', proposalCount);
+  console.log('📋 Loaded proposals:', proposals.length);
+  console.log('⏳ Loading state:', isLoadingProposals);
+  console.log('❌ Error state:', proposalsError);
+
+  // Convert contract data to display format
+  const displayProposals = proposals.map((proposal) => {
+    const now = Date.now() / 1000;
+    const timeLeft = proposal.endTime - now;
+    const isActive = proposal.isActive && !proposal.isEnded && timeLeft > 0;
+    const isPending = !proposal.isActive && timeLeft > 0;
+    
+    let status: "active" | "pending" | "ended" = "ended";
+    let timeLeftText = "Ended";
+    
+    if (isActive) {
+      status = "active";
+      const days = Math.floor(timeLeft / 86400);
+      timeLeftText = days > 0 ? `${days} day${days > 1 ? 's' : ''} left` : "Ending soon";
+    } else if (isPending) {
+      status = "pending";
+      const days = Math.floor(timeLeft / 86400);
+      timeLeftText = `Starts in ${days} day${days > 1 ? 's' : ''}`;
+    }
+
+    console.log(`🎨 Converting proposal ${proposal.id}:`, {
+      title: proposal.title,
+      status,
+      timeLeft: timeLeftText,
+      isActive,
+      isEnded: proposal.isEnded
+    });
+
+    return {
+      id: proposal.id,
+      title: proposal.title,
+      description: proposal.description,
+      status,
+      votesFor: proposal.votesFor || 0,
+      votesAgainst: proposal.votesAgainst || 0,
+      totalVotes: proposal.totalVotes || 0,
+      timeLeft: timeLeftText,
+      privacy: "private" as const,
+      chain: selectedChain,
+      category: proposal.category,
+      priority: proposal.priority,
+      tags: proposal.tags,
+      proposer: proposal.proposer,
+      quorumThreshold: proposal.quorumThreshold
+    };
+  });
+
+  console.log('🎨 Converted proposals for display:', displayProposals);
 
   const handleCreateProposal = (proposalData: any) => {
-    console.log("Creating proposal:", proposalData);
+    console.log("✅ Creating proposal:", proposalData);
     // In a real app, this would submit to the blockchain
     setCreateModalOpen(false);
   };
@@ -118,6 +139,11 @@ const Proposals = ({
                 <p className="text-muted-foreground">
                   Participate in cross-chain governance with complete privacy
                 </p>
+                {proposalCount > 0 && (
+                  <p className="text-muted-foreground text-sm mt-1">
+                    {proposalCount} proposal{proposalCount > 1 ? 's' : ''} found
+                  </p>
+                )}
               </div>
               <Button 
                 variant="neon" 
@@ -129,18 +155,54 @@ const Proposals = ({
               </Button>
             </div>
 
-            {/* Proposals Grid */}
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {mockProposals.map((proposal) => (
-                <div key={proposal.id} className="animate-slide-in">
-                  <ProposalCard 
-                    proposal={proposal}
-                    onVote={onVote}
-                    isConnected={isWalletConnected}
-                  />
+            {/* Loading State */}
+            {isLoadingProposals && (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-cyber-purple" />
+                <span className="ml-2 text-muted-foreground">Loading proposals from contract...</span>
+              </div>
+            )}
+
+            {/* Error State */}
+            {proposalsError && (
+              <div className="bg-red-900/20 border border-red-500/20 rounded-lg p-4 mb-6">
+                <p className="text-red-300">Failed to load proposals: {proposalsError.message}</p>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!isLoadingProposals && !proposalsError && displayProposals.length === 0 && (
+              <div className="text-center py-12">
+                <div className="text-muted-foreground mb-4">
+                  <Plus className="h-12 w-12 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-foreground mb-2">No Proposals Yet</h3>
+                  <p className="text-muted-foreground">Be the first to create a governance proposal</p>
                 </div>
-              ))}
-            </div>
+                <Button 
+                  onClick={() => setCreateModalOpen(true)}
+                  variant="neon"
+                  className="gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create First Proposal
+                </Button>
+              </div>
+            )}
+
+            {/* Proposals Grid */}
+            {!isLoadingProposals && displayProposals.length > 0 && (
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {displayProposals.map((proposal) => (
+                  <div key={proposal.id} className="animate-slide-in">
+                    <ProposalCard 
+                      proposal={proposal}
+                      onVote={onVote}
+                      isConnected={isWalletConnected}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </>
         )}
       </main>

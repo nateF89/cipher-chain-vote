@@ -78,6 +78,8 @@ export const useContract = () => {
     
     try {
       console.log('🔄 Registering user as voter...');
+      console.log('📋 User address:', address);
+      console.log('📋 Contract address:', CONTRACT_ADDRESS);
       
       const result = await writeContractAsync({
         address: CONTRACT_ADDRESS as `0x${string}`,
@@ -86,10 +88,16 @@ export const useContract = () => {
         args: []
       });
       
-      console.log('✅ User registered as voter:', result);
+      console.log('✅ User registered as voter successfully');
+      console.log('📊 Transaction hash:', result);
       return result;
     } catch (error) {
       console.error('❌ Failed to register as voter:', error);
+      console.error('📊 Error details:', {
+        name: error?.name,
+        message: error?.message,
+        code: error?.code
+      });
       throw error;
     }
   };
@@ -100,9 +108,16 @@ export const useContract = () => {
     if (!instance) throw new Error('FHE instance not ready');
     
     try {
-      console.log('🚀 Starting FHE vote encryption...', { proposalId, voteChoice, address, contractAddress: CONTRACT_ADDRESS });
+      console.log('🚀 Starting FHE vote encryption process...');
+      console.log('📊 Vote details:', { 
+        proposalId, 
+        voteChoice, 
+        address, 
+        contractAddress: CONTRACT_ADDRESS 
+      });
       
       // Encrypt the vote using FHE
+      console.log('🔄 Step 1: Encrypting vote data with FHE...');
       const { handles, inputProof } = await encryptVoteData(
         instance,
         CONTRACT_ADDRESS,
@@ -110,7 +125,8 @@ export const useContract = () => {
         { voteChoice }
       );
       
-      console.log('✅ FHE encryption completed', { 
+      console.log('✅ Step 1 completed: FHE encryption successful');
+      console.log('📊 Encryption results:', { 
         handlesCount: handles.length, 
         proofLength: inputProof.length,
         firstHandle: handles[0]?.substring(0, 10) + '...'
@@ -122,12 +138,14 @@ export const useContract = () => {
         inputProof as `0x${string}`
       ];
       
+      console.log('🔄 Step 2: Preparing contract call...');
       console.log('📊 Contract call arguments:', {
         proposalId: args[0].toString(),
         voteChoice: args[1].substring(0, 10) + '...',
         proofLength: args[2].length
       });
       
+      console.log('🔄 Step 3: Submitting vote to contract...');
       const result = await writeContractAsync({
         address: CONTRACT_ADDRESS as `0x${string}`,
         abi: CONTRACT_ABI,
@@ -135,7 +153,8 @@ export const useContract = () => {
         args
       });
       
-      console.log('✅ Contract call submitted:', result);
+      console.log('✅ Step 3 completed: Vote submitted successfully');
+      console.log('📊 Transaction hash:', result);
       return result;
     } catch (error) {
       console.error('❌ FHE encryption or contract call failed:', error);
