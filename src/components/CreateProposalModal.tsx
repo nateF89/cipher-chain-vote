@@ -44,6 +44,13 @@ export function CreateProposalModal({ isOpen, onClose, onSubmit, selectedChain }
       // Calculate duration in seconds
       let duration: number;
       
+      console.log('🕐 Duration calculation:', {
+        durationType,
+        votingDuration,
+        endDate,
+        endDateString: endDate?.toString()
+      });
+      
       if (durationType === "days") {
         const durationMap: Record<string, number> = {
           "3days": 3 * 24 * 60 * 60,
@@ -62,11 +69,27 @@ export function CreateProposalModal({ isOpen, onClose, onSubmit, selectedChain }
         const end = new Date(endDate);
         duration = Math.floor((end.getTime() - now.getTime()) / 1000);
         
+        console.log('🕐 Date calculation:', {
+          now: now.getTime(),
+          end: end.getTime(),
+          duration,
+          nowDate: now.toString(),
+          endDate: end.toString()
+        });
+        
         if (duration <= 0) {
           toast.error("End date must be in the future");
           return;
         }
+        
+        // 防止异常大的时间值
+        if (duration > 365 * 24 * 60 * 60) { // 超过1年
+          toast.error("Duration cannot exceed 1 year");
+          return;
+        }
       }
+      
+      console.log('🕐 Final duration:', duration);
       
       // Generate proposal hash (in real app, this would be a proper hash)
       const proposalHash = `0x${Math.random().toString(16).substr(2, 8)}${Math.random().toString(16).substr(2, 8)}`;

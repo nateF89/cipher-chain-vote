@@ -63,6 +63,16 @@ const Proposals = ({
       isEnded: proposal.isEnded
     });
     
+    // 验证时间是否合理
+    if (endTime > now + 365 * 24 * 60 * 60) { // 超过1年
+      console.error(`❌ Proposal ${proposal.id} has invalid endTime:`, {
+        endTime,
+        now,
+        timeLeft,
+        proposal: proposal.title
+      });
+    }
+    
     const isActive = proposal.isActive && !proposal.isEnded && timeLeft > 0;
     const isPending = !proposal.isActive && timeLeft > 0;
     

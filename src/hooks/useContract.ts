@@ -54,6 +54,23 @@ export const useContract = () => {
     // Duration is already in seconds from CreateProposalModal
     const durationInSeconds = duration;
     
+    console.log('🕐 Contract createProposal:', {
+      title,
+      duration,
+      durationInSeconds,
+      quorumThreshold,
+      category
+    });
+    
+    // 验证持续时间是否合理
+    if (durationInSeconds <= 0) {
+      throw new Error('Duration must be positive');
+    }
+    
+    if (durationInSeconds > 365 * 24 * 60 * 60) { // 超过1年
+      throw new Error('Duration cannot exceed 1 year');
+    }
+    
     return writeContractAsync({
       address: CONTRACT_ADDRESS,
       abi: CONTRACT_ABI,
