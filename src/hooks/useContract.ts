@@ -372,14 +372,15 @@ export const useAllProposals = () => {
         for (let i = 0; i < proposalCount; i++) {
           console.log(`🔍 Loading proposal ${i} from contract using publicClient...`);
           try {
-            const result = await publicClient.readContract({
+            // 获取提案基本信息
+            const proposalInfo = await publicClient.readContract({
               address: CONTRACT_ADDRESS as `0x${string}`,
               abi: CONTRACT_ABI,
               functionName: 'getProposalInfo',
               args: [BigInt(i)]
             });
 
-            console.log(`📊 Proposal ${i} data from contract:`, result);
+            console.log(`📊 Proposal ${i} info from contract:`, proposalInfo);
             
             const [
               title,
@@ -398,7 +399,37 @@ export const useAllProposals = () => {
               priority,
               tags,
               votingOptions
-            ] = result as [string, string, boolean, boolean, string, bigint, bigint, bigint, boolean, boolean, boolean, bigint, string, string, string, string];
+            ] = proposalInfo as [string, string, boolean, boolean, string, bigint, bigint, bigint, boolean, boolean, boolean, bigint, string, string, string, string];
+
+            // 获取投票结果数据
+            let voteResults = null;
+            try {
+              const resultsData = await publicClient.readContract({
+                address: CONTRACT_ADDRESS as `0x${string}`,
+                abi: CONTRACT_ABI,
+                functionName: 'getProposalResults',
+                args: [BigInt(i)]
+              });
+              
+              console.log(`📊 Proposal ${i} results from contract:`, resultsData);
+              voteResults = resultsData;
+            } catch (err) {
+              console.log(`⚠️ Could not get results for proposal ${i}:`, err);
+            }
+
+            // 解析投票结果
+            let yesVotes = 0, noVotes = 0, abstainVotes = 0, totalVotes = 0;
+            if (voteResults && Array.isArray(voteResults[0]) && voteResults[0].length > 0) {
+              const results = voteResults[0] as number[];
+              if (results.length >= 4) {
+                yesVotes = results[0] || 0;
+                noVotes = results[1] || 0;
+                abstainVotes = results[2] || 0;
+                totalVotes = results[3] || 0;
+              }
+            }
+
+            console.log(`📊 Proposal ${i} vote counts:`, { yesVotes, noVotes, abstainVotes, totalVotes });
 
             loadedProposals.push({
               id: i.toString(),
@@ -415,10 +446,10 @@ export const useAllProposals = () => {
               priority,
               tags,
               votingOptions,
-              yesVotes: 0,
-              noVotes: 0,
-              abstainVotes: 0,
-              totalVotes: 0
+              yesVotes,
+              noVotes,
+              abstainVotes,
+              totalVotes
             });
             
             console.log(`✅ Proposal ${i} loaded successfully from contract`);
