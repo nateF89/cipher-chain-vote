@@ -29,6 +29,7 @@ export function CreateProposalModal({ isOpen, onClose, onSubmit, selectedChain }
   const [votingDuration, setVotingDuration] = useState("");
   const [endDate, setEndDate] = useState<Date>();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [durationType, setDurationType] = useState<"days" | "date">("days");
   
   const { createProposal, isPending: isLoading, error } = useContract();
 
@@ -41,14 +42,31 @@ export function CreateProposalModal({ isOpen, onClose, onSubmit, selectedChain }
     setIsSubmitting(true);
     try {
       // Calculate duration in seconds
-      const durationMap: Record<string, number> = {
-        "3days": 3 * 24 * 60 * 60,
-        "7days": 7 * 24 * 60 * 60,
-        "14days": 14 * 24 * 60 * 60,
-        "30days": 30 * 24 * 60 * 60,
-      };
+      let duration: number;
       
-      const duration = durationMap[votingDuration] || 7 * 24 * 60 * 60; // Default to 7 days
+      if (durationType === "days") {
+        const durationMap: Record<string, number> = {
+          "3days": 3 * 24 * 60 * 60,
+          "7days": 7 * 24 * 60 * 60,
+          "14days": 14 * 24 * 60 * 60,
+          "30days": 30 * 24 * 60 * 60,
+        };
+        duration = durationMap[votingDuration] || 7 * 24 * 60 * 60; // Default to 7 days
+      } else {
+        // Calculate duration from end date
+        if (!endDate) {
+          toast.error("Please select an end date");
+          return;
+        }
+        const now = new Date();
+        const end = new Date(endDate);
+        duration = Math.floor((end.getTime() - now.getTime()) / 1000);
+        
+        if (duration <= 0) {
+          toast.error("End date must be in the future");
+          return;
+        }
+      }
       
       // Generate proposal hash (in real app, this would be a proper hash)
       const proposalHash = `0x${Math.random().toString(16).substr(2, 8)}${Math.random().toString(16).substr(2, 8)}`;
@@ -206,47 +224,69 @@ export function CreateProposalModal({ isOpen, onClose, onSubmit, selectedChain }
             </p>
           </div>
 
-          {/* Voting Duration */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="text-foreground font-medium">Voting Duration *</Label>
-              <Select value={votingDuration} onValueChange={setVotingDuration} required>
-                <SelectTrigger className="bg-glass-bg border-cyber-purple/30">
-                  <SelectValue placeholder="Select duration" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="3days">3 Days</SelectItem>
-                  <SelectItem value="7days">7 Days</SelectItem>
-                  <SelectItem value="14days">14 Days</SelectItem>
-                  <SelectItem value="30days">30 Days</SelectItem>
-                  <SelectItem value="custom">Custom</SelectItem>
-                </SelectContent>
-              </Select>
+          {/* Voting Duration - Choose one method */}
+          <div className="space-y-4">
+            <Label className="text-foreground font-medium">Voting Duration *</Label>
+            
+            {/* Duration Type Selector */}
+            <div className="space-y-3">
+              <RadioGroup value={durationType} onValueChange={(value) => setDurationType(value as "days" | "date")}>
+                <div className="flex items-center space-x-2 p-3 rounded-lg border border-cyber-purple/30 bg-glass-bg/50">
+                  <RadioGroupItem value="days" id="days" />
+                  <Label htmlFor="days" className="cursor-pointer">
+                    <span className="text-foreground">Set by Days</span>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2 p-3 rounded-lg border border-muted bg-glass-bg/30">
+                  <RadioGroupItem value="date" id="date" />
+                  <Label htmlFor="date" className="cursor-pointer">
+                    <span className="text-foreground">Set by End Date</span>
+                  </Label>
+                </div>
+              </RadioGroup>
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-foreground font-medium">End Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal bg-glass-bg border-cyber-purple/30"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {endDate ? format(endDate, "PPP") : "Pick a date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={endDate}
-                    onSelect={setEndDate}
-                    disabled={(date) => date < new Date()}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
+            {/* Duration Input based on selection */}
+            {durationType === "days" ? (
+              <div className="space-y-2">
+                <Label className="text-foreground font-medium">Duration</Label>
+                <Select value={votingDuration} onValueChange={setVotingDuration} required>
+                  <SelectTrigger className="bg-glass-bg border-cyber-purple/30">
+                    <SelectValue placeholder="Select duration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="3days">3 Days</SelectItem>
+                    <SelectItem value="7days">7 Days</SelectItem>
+                    <SelectItem value="14days">14 Days</SelectItem>
+                    <SelectItem value="30days">30 Days</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label className="text-foreground font-medium">End Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal bg-glass-bg border-cyber-purple/30"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {endDate ? format(endDate, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={setEndDate}
+                      disabled={(date) => date < new Date()}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
           </div>
 
 
@@ -264,7 +304,7 @@ export function CreateProposalModal({ isOpen, onClose, onSubmit, selectedChain }
               type="submit"
               variant="neon"
               className="flex-1"
-              disabled={!title || !description || !category || !votingDuration || isSubmitting || isLoading}
+              disabled={!title || !description || !category || (durationType === "days" && !votingDuration) || (durationType === "date" && !endDate) || isSubmitting || isLoading}
             >
               {isSubmitting ? "Creating..." : "Create Proposal"}
             </Button>

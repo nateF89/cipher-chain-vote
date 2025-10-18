@@ -260,13 +260,7 @@ export const CONTRACT_ABI = [
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "proposalId",
-        "type": "uint256"
-      }
-    ],
+    "inputs": [],
     "name": "getProposalCount",
     "outputs": [
       {
