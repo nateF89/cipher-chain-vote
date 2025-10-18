@@ -36,6 +36,18 @@ const Proposals = ({
   console.log('⏳ Loading state:', isLoadingProposals);
   console.log('❌ Error state:', proposalsError);
 
+  // 计算真实统计数据
+  const totalParticipants = proposals.reduce((sum, proposal) => sum + (proposal.totalVotes || 0), 0);
+  const activeProposals = proposals.filter(p => p.isActive && !p.isEnded).length;
+  const endedProposals = proposals.filter(p => p.isEnded).length;
+  
+  console.log('📊 Real statistics:', {
+    totalParticipants,
+    activeProposals,
+    endedProposals,
+    totalProposals: proposals.length
+  });
+
   // Convert contract data to display format
   const displayProposals = proposals.map((proposal) => {
     const now = Date.now() / 1000;
@@ -145,10 +157,21 @@ const Proposals = ({
                 <p className="text-muted-foreground">
                   Participate in cross-chain governance with complete privacy
                 </p>
-                {proposalCount > 0 && (
-                  <p className="text-muted-foreground text-sm mt-1">
-                    {proposalCount} proposal{proposalCount > 1 ? 's' : ''} found
-                  </p>
+                {!isLoadingProposals && (
+                  <div className="flex items-center gap-6 mt-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="text-cyber-green font-semibold">{activeProposals}</span>
+                      <span className="text-muted-foreground">Active</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground font-semibold">{endedProposals}</span>
+                      <span className="text-muted-foreground">Ended</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-cyber-cyan font-semibold">{totalParticipants}</span>
+                      <span className="text-muted-foreground">Total Participants</span>
+                    </div>
+                  </div>
                 )}
               </div>
               <Button 
