@@ -8,6 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { CheckCircle, Shield, Lock, Send } from "lucide-react";
 import { useCipherChainVote } from "@/hooks/useContract";
+import { useZamaInstance } from "@/hooks/useZamaInstance";
+import { useEthersSigner } from "@/hooks/useEthersSigner";
+import { useAccount } from "wagmi";
+import { Contract } from "ethers";
+import { CONTRACT_ADDRESS, CONTRACT_ABI } from "@/lib/contractConfig";
 import { toast } from "sonner";
 
 interface VotingModalProps {
@@ -22,10 +27,15 @@ export function VotingModal({ isOpen, onClose, proposalId, proposalTitle, onSubm
   const [vote, setVote] = useState<"for" | "against" | "">("");
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const { castVote, isLoading, error } = useCipherChainVote();
+  const { address } = useAccount();
+  const { instance } = useZamaInstance();
+  const signerPromise = useEthersSigner();
 
   const handleSubmit = async () => {
-    if (!vote) return;
+    if (!vote || !instance || !address || !signerPromise) {
+      toast.error("Missing wallet or encryption service");
+      return;
+    }
     
     setIsSubmitting(true);
     try {
@@ -33,10 +43,45 @@ export function VotingModal({ isOpen, onClose, proposalId, proposalTitle, onSubm
       const voteChoice = vote === "for" ? 1 : 0;
       const votingPower = 1; // Default voting power, in real app this would be calculated
       
-      // Cast vote on blockchain
-      await castVote(parseInt(proposalId), voteChoice, votingPower);
+      // Create encrypted input
+      const input = instance.createEncryptedInput(CONTRACT_ADDRESS, address);
+      input.add8(voteChoice); // Add vote choice (0 or 1)
+      input.add32(votingPower); // Add voting power
       
-      toast.success("Vote submitted successfully!");
+      // Encrypt the input
+      const encryptedInput = await input.encrypt();
+      
+      // Convert handles to proper format
+      const convertHex = (handle: any): string => {
+        if (typeof handle === 'string') {
+          return handle.startsWith('0x') ? handle : `0x${handle}`;
+        } else if (handle instanceof Uint8Array) {
+          return `0x${Array.from(handle).map(b => b.toString(16).padStart(2, '0')).join('')}`;
+        } else if (Array.isArray(handle)) {
+          return `0x${handle.map(b => b.toString(16).padStart(2, '0')).join('')}`;
+        }
+        return `0x${handle.toString()}`;
+      };
+      
+      const handles = encryptedInput.handles.map(convertHex);
+      const proof = `0x${Array.from(encryptedInput.inputProof)
+        .map(b => b.toString(16).padStart(2, '0')).join('')}`;
+      
+      // Get signer and create contract instance
+      const signer = await signerPromise;
+      const contract = new Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+      
+      // Cast encrypted vote
+      const tx = await contract.castVote(
+        parseInt(proposalId),
+        handles[0], // voteChoice handle
+        handles[1], // votingPower handle
+        proof
+      );
+      
+      await tx.wait();
+      
+      toast.success("Encrypted vote submitted successfully!");
       onSubmitVote(vote as "for" | "against", reason);
       
       setVote("");

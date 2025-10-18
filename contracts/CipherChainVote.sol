@@ -15,6 +15,9 @@ contract CipherChainVote is SepoliaConfig {
         euint8 status; // 0: pending, 1: active, 2: passed, 3: rejected
         bool isActive;
         bool isVerified;
+        bool finalized;
+        bool decryptionPending;
+        uint256 requestId;
         string title;
         string description;
         string proposalHash;
@@ -22,6 +25,7 @@ contract CipherChainVote is SepoliaConfig {
         uint256 startTime;
         uint256 endTime;
         uint256 chainId;
+        uint32[] clearResults; // revealed results after finalize
     }
     
     struct Vote {
@@ -46,6 +50,7 @@ contract CipherChainVote is SepoliaConfig {
     mapping(uint256 => Vote) public votes;
     mapping(address => Voter) public voters;
     mapping(uint256 => mapping(address => bool)) public hasVoted;
+    mapping(uint256 => uint256) private _requestToProposal;
     
     uint256 public proposalCounter;
     uint256 public voteCounter;
@@ -59,6 +64,8 @@ contract CipherChainVote is SepoliaConfig {
     event ProposalStatusChanged(uint256 indexed proposalId, uint8 status);
     event VoterRegistered(address indexed voter, uint32 votingPower);
     event CrossChainVoteAggregated(uint256 indexed proposalId, uint32 totalVotes);
+    event FinalizeRequested(uint256 indexed proposalId, uint256 requestId);
+    event Finalized(uint256 indexed proposalId, uint32[] results);
     
     constructor(address _verifier) {
         owner = msg.sender;
@@ -96,13 +103,17 @@ contract CipherChainVote is SepoliaConfig {
             status: FHE.asEuint8(0), // pending
             isActive: true,
             isVerified: false,
+            finalized: false,
+            decryptionPending: false,
+            requestId: 0,
             title: _title,
             description: _description,
             proposalHash: _proposalHash,
             proposer: msg.sender,
             startTime: block.timestamp,
             endTime: block.timestamp + _duration,
-            chainId: _chainId
+            chainId: _chainId,
+            clearResults: new uint32[](0)
         });
         
         emit ProposalCreated(proposalId, msg.sender, _title);
@@ -207,6 +218,56 @@ contract CipherChainVote is SepoliaConfig {
         emit ProposalStatusChanged(proposalId, isVerified ? 1 : 0);
     }
     
+    function requestFinalize(uint256 proposalId) public {
+        require(proposals[proposalId].proposer != address(0), "Proposal does not exist");
+        require(block.timestamp > proposals[proposalId].endTime, "Voting period not ended");
+        require(!proposals[proposalId].finalized, "Already finalized");
+        require(!proposals[proposalId].decryptionPending, "Decryption pending");
+
+        // Create array of encrypted vote counts for decryption
+        bytes32[] memory cts = new bytes32[](2);
+        cts[0] = FHE.toBytes32(proposals[proposalId].votesFor);
+        cts[1] = FHE.toBytes32(proposals[proposalId].votesAgainst);
+
+        uint256 requestId = FHE.requestDecryption(cts, this.decryptionCallback.selector);
+        proposals[proposalId].decryptionPending = true;
+        proposals[proposalId].requestId = requestId;
+        _requestToProposal[requestId] = proposalId;
+        
+        emit FinalizeRequested(proposalId, requestId);
+    }
+
+    function decryptionCallback(uint256 requestId, bytes memory cleartexts, bytes memory signatures) public returns (bool) {
+        uint256 proposalId = _requestToProposal[requestId];
+        require(proposalId < proposalCounter, "Invalid request");
+
+        Proposal storage p = proposals[proposalId];
+        require(p.decryptionPending && p.requestId == requestId, "No pending decryption");
+
+        // Verify KMS signatures
+        FHE.checkSignatures(requestId, cleartexts, signatures);
+
+        // Decode results - votesFor and votesAgainst
+        uint32[] memory results = abi.decode(cleartexts, (uint32[]));
+        require(results.length == 2, "Invalid results length");
+
+        p.clearResults = results;
+        p.finalized = true;
+        p.decryptionPending = false;
+        p.isActive = false;
+
+        // Determine if proposal passed (votesFor > votesAgainst)
+        if (results[0] > results[1]) {
+            p.status = FHE.asEuint8(2); // passed
+        } else {
+            p.status = FHE.asEuint8(3); // rejected
+        }
+
+        emit Finalized(proposalId, p.clearResults);
+        emit ProposalStatusChanged(proposalId, results[0] > results[1] ? 2 : 3);
+        return true;
+    }
+
     function finalizeProposal(uint256 proposalId) public {
         require(proposals[proposalId].proposer != address(0), "Proposal does not exist");
         require(block.timestamp > proposals[proposalId].endTime, "Voting period not ended");
@@ -282,7 +343,7 @@ contract CipherChainVote is SepoliaConfig {
         uint8 votingPower,
         uint8 reputation,
         bool isRegistered,
-        bool hasVoted
+        bool userHasVoted
     ) {
         Voter storage voterInfo = voters[voter];
         return (
@@ -303,6 +364,27 @@ contract CipherChainVote is SepoliaConfig {
             0, // FHE.decrypt(proposal.votesFor) - will be decrypted off-chain
             0, // FHE.decrypt(proposal.votesAgainst) - will be decrypted off-chain
             0  // FHE.decrypt(proposal.totalVotes) - will be decrypted off-chain
+        );
+    }
+
+    function getProposalResults(uint256 proposalId) public view returns (
+        uint32[] memory results,
+        bool finalized
+    ) {
+        Proposal storage proposal = proposals[proposalId];
+        return (proposal.clearResults, proposal.finalized);
+    }
+
+    function getEncryptedVoteCounts(uint256 proposalId) public view returns (
+        bytes32 votesForHandle,
+        bytes32 votesAgainstHandle
+    ) {
+        Proposal storage proposal = proposals[proposalId];
+        require(proposal.proposer != address(0), "Proposal does not exist");
+        
+        return (
+            FHE.toBytes32(proposal.votesFor),
+            FHE.toBytes32(proposal.votesAgainst)
         );
     }
 }
