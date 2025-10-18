@@ -10,7 +10,7 @@ import "./App.css";
 
 function App() {
   const { isConnected, address } = useAccount();
-  const [selectedChain, setSelectedChain] = useState("ethereum");
+  const [selectedChain, setSelectedChain] = useState("sepolia");
   const [votingModalOpen, setVotingModalOpen] = useState(false);
   const [selectedProposal, setSelectedProposal] = useState<string>("");
 
