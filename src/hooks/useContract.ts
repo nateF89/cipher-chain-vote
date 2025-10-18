@@ -51,7 +51,8 @@ export const useContract = () => {
   ) => {
     if (!isConnected) throw new Error('Wallet not connected');
     
-    const durationInSeconds = duration * 24 * 60 * 60;
+    // Duration is already in seconds from CreateProposalModal
+    const durationInSeconds = duration;
     
     return writeContractAsync({
       address: CONTRACT_ADDRESS,
