@@ -103,7 +103,6 @@ contract CipherChainVote is SepoliaConfig {
         require(bytes(_title).length > 0, "Title cannot be empty");
         require(_duration > 0, "Duration must be positive");
         require(_quorumThreshold > 0, "Quorum threshold must be positive");
-        require(voters[msg.sender].isVerified, "Voter must be verified");
         
         uint256 proposalId = proposalCounter++;
         
@@ -153,7 +152,6 @@ contract CipherChainVote is SepoliaConfig {
         require(proposals[proposalId].isActive, "Proposal is not active");
         require(block.timestamp >= proposals[proposalId].startTime, "Voting has not started");
         require(block.timestamp <= proposals[proposalId].endTime, "Voting has ended");
-        require(voters[msg.sender].isVerified, "Voter not verified");
         require(!hasVotedOnProposal[msg.sender][proposalId], "Already voted on this proposal");
         
         uint256 voteId = voteCounter++;
