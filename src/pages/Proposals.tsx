@@ -50,8 +50,19 @@ const Proposals = ({
 
   // Convert contract data to display format
   const displayProposals = proposals.map((proposal) => {
-    const now = Date.now() / 1000;
-    const timeLeft = proposal.endTime - now;
+    const now = Math.floor(Date.now() / 1000); // 当前时间戳（秒）
+    const endTime = Math.floor(proposal.endTime); // 确保 endTime 是整数
+    const timeLeft = endTime - now;
+    
+    console.log(`🕐 Proposal ${proposal.id} time calculation:`, {
+      now,
+      endTime: proposal.endTime,
+      endTimeFloor: endTime,
+      timeLeft,
+      isActive: proposal.isActive,
+      isEnded: proposal.isEnded
+    });
+    
     const isActive = proposal.isActive && !proposal.isEnded && timeLeft > 0;
     const isPending = !proposal.isActive && timeLeft > 0;
     
@@ -61,11 +72,32 @@ const Proposals = ({
     if (isActive) {
       status = "active";
       const days = Math.floor(timeLeft / 86400);
-      timeLeftText = days > 0 ? `${days} day${days > 1 ? 's' : ''} left` : "Ending soon";
+      // 防止显示异常大的天数
+      if (days > 365) {
+        timeLeftText = "Invalid time";
+        console.error(`❌ Invalid time calculation for proposal ${proposal.id}:`, {
+          timeLeft,
+          days,
+          endTime: proposal.endTime,
+          now
+        });
+      } else {
+        timeLeftText = days > 0 ? `${days} day${days > 1 ? 's' : ''} left` : "Ending soon";
+      }
     } else if (isPending) {
       status = "pending";
       const days = Math.floor(timeLeft / 86400);
-      timeLeftText = `Starts in ${days} day${days > 1 ? 's' : ''}`;
+      if (days > 365) {
+        timeLeftText = "Invalid time";
+        console.error(`❌ Invalid time calculation for proposal ${proposal.id}:`, {
+          timeLeft,
+          days,
+          endTime: proposal.endTime,
+          now
+        });
+      } else {
+        timeLeftText = `Starts in ${days} day${days > 1 ? 's' : ''}`;
+      }
     }
 
     console.log(`🎨 Converting proposal ${proposal.id}:`, {

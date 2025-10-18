@@ -401,33 +401,25 @@ export const useAllProposals = () => {
               votingOptions
             ] = proposalInfo as [string, string, boolean, boolean, string, bigint, bigint, bigint, boolean, boolean, boolean, bigint, string, string, string, string];
 
-            // 获取投票结果数据
-            let voteResults = null;
+            // 获取简单的投票计数器
+            let totalVotes = 0;
             try {
-              const resultsData = await publicClient.readContract({
+              const voteCountData = await publicClient.readContract({
                 address: CONTRACT_ADDRESS as `0x${string}`,
                 abi: CONTRACT_ABI,
-                functionName: 'getProposalResults',
+                functionName: 'proposalVoteCount',
                 args: [BigInt(i)]
               });
               
-              console.log(`📊 Proposal ${i} results from contract:`, resultsData);
-              voteResults = resultsData;
+              console.log(`📊 Proposal ${i} vote count from contract:`, voteCountData);
+              totalVotes = Number(voteCountData) || 0;
             } catch (err) {
-              console.log(`⚠️ Could not get results for proposal ${i}:`, err);
+              console.log(`⚠️ Could not get vote count for proposal ${i}:`, err);
             }
 
-            // 解析投票结果
-            let yesVotes = 0, noVotes = 0, abstainVotes = 0, totalVotes = 0;
-            if (voteResults && Array.isArray(voteResults[0]) && voteResults[0].length > 0) {
-              const results = voteResults[0] as number[];
-              if (results.length >= 4) {
-                yesVotes = results[0] || 0;
-                noVotes = results[1] || 0;
-                abstainVotes = results[2] || 0;
-                totalVotes = results[3] || 0;
-              }
-            }
+            // 由于投票数据是加密的，我们只能显示总数
+            // 具体的支持/反对/弃权数据需要解密后才能获取
+            const yesVotes = 0, noVotes = 0, abstainVotes = 0;
 
             console.log(`📊 Proposal ${i} vote counts:`, { yesVotes, noVotes, abstainVotes, totalVotes });
 

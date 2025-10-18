@@ -55,6 +55,9 @@ contract CipherChainVote is SepoliaConfig {
     mapping(address => mapping(uint256 => bool)) public hasVotedOnProposal;
     mapping(uint256 => uint256) private _requestToProposal;
     
+    // 添加简单的投票计数器（非加密）
+    mapping(uint256 => uint256) public proposalVoteCount;
+    
     uint256 public proposalCounter;
     uint256 public voteCounter;
     
@@ -194,6 +197,9 @@ contract CipherChainVote is SepoliaConfig {
         FHE.allowThis(proposals[proposalId].totalVotes);
         
         hasVotedOnProposal[msg.sender][proposalId] = true;
+        
+        // 更新简单的投票计数器
+        proposalVoteCount[proposalId]++;
         
         emit VoteCast(voteId, proposalId, msg.sender);
         return voteId;
