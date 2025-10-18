@@ -3,7 +3,8 @@ import { useAccount, useReadContract, useWriteContract, useWaitForTransactionRec
 import { useZamaInstance } from './useZamaInstance';
 import { useEthersSigner } from './useEthersSigner';
 import { encryptVoteData, decryptVoteData } from '../lib/fhe-utils';
-import { CONTRACT_ADDRESS, CONTRACT_ABI } from '../config/contracts';
+import { CONTRACT_ADDRESS } from '../config/contracts';
+import { CONTRACT_ABI } from '../lib/contract';
 
 export interface Proposal {
   id: string;

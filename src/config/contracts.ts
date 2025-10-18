@@ -11,8 +11,8 @@ export const CONTRACT_CONFIG = {
   // API Keys (from environment or defaults)
   API_KEYS: ENV_CONFIG.API_KEYS,
   
-  // Contract ABI (imported from JSON file)
-  ABI: require('../lib/contractABI.json').abi,
+  // Contract ABI (imported from TypeScript file)
+  ABI: null, // Will be imported from contract.ts
   
   // Deployment information
   DEPLOYMENT: {
