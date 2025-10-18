@@ -64,14 +64,18 @@ const Proposals = ({
       isEnded: proposal.isEnded
     });
 
+    // 只有在投票结束后才显示投票结果
+    const showResults = proposal.isEnded || status === "ended";
+    
     return {
       id: proposal.id,
       title: proposal.title,
       description: proposal.description,
       status,
-      votesFor: proposal.votesFor || 0,
-      votesAgainst: proposal.votesAgainst || 0,
-      totalVotes: proposal.totalVotes || 0,
+      // 投票过程中隐藏结果，投票结束后显示
+      votesFor: showResults ? (proposal.votesFor || 0) : 0,
+      votesAgainst: showResults ? (proposal.votesAgainst || 0) : 0,
+      totalVotes: showResults ? (proposal.totalVotes || 0) : 0,
       timeLeft: timeLeftText,
       privacy: "private" as const,
       chain: selectedChain,
@@ -79,7 +83,9 @@ const Proposals = ({
       priority: proposal.priority,
       tags: proposal.tags,
       proposer: proposal.proposer,
-      quorumThreshold: proposal.quorumThreshold
+      quorumThreshold: proposal.quorumThreshold,
+      // 添加参与人数（从链上读取）
+      participants: proposal.totalVotes || 0
     };
   });
 
