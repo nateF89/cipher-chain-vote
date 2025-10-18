@@ -6,7 +6,7 @@ import { useAccount } from "wagmi";
 import { useZamaInstance } from "@/hooks/useZamaInstance";
 import { useEthersSigner } from "@/hooks/useEthersSigner";
 import { Contract } from "ethers";
-import { CONTRACT_ADDRESS, CONTRACT_ABI } from "@/lib/contractConfig";
+import { CONTRACT_ADDRESS, CONTRACT_ABI } from "@/config/contracts";
 import { toast } from "sonner";
 
 interface VotingModalProps {

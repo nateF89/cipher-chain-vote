@@ -45,27 +45,39 @@ async function main() {
   
   const demoProposals = [
     {
-      title: "Increase Development Fund Allocation",
-      description: "Proposal to allocate an additional 500,000 tokens to the development fund for Q2 2024 roadmap execution and ecosystem growth initiatives.",
+      title: "Increase Cross-Chain Bridge Security",
+      description: "Proposal to implement additional security measures for cross-chain asset transfers and governance communications. This includes enhanced encryption protocols, multi-signature verification, and improved audit trails for all cross-chain operations.",
       duration: 7 * 24 * 60 * 60, // 7 days in seconds
       quorumThreshold: 100,
-      category: "treasury",
+      category: "security",
       priority: "high",
-      tags: "funding, development, roadmap",
+      tags: "security, cross-chain, bridge, encryption",
       votingOptions: "yes_no_abstain",
       proposalHash: "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
       chainId: 11155111
     },
     {
-      title: "Implement Quarterly Governance Reviews", 
-      description: "Establish regular governance review sessions to assess DAO performance, member engagement, and process improvements.",
+      title: "Multi-Chain Treasury Allocation",
+      description: "Distribute treasury funds across multiple chains to support ecosystem growth and development initiatives. This proposal aims to diversify our treasury holdings and support development across Ethereum, Polygon, and Arbitrum networks.",
       duration: 10 * 24 * 60 * 60, // 10 days in seconds
       quorumThreshold: 150,
-      category: "governance",
-      priority: "medium",
-      tags: "governance, process, review",
+      category: "treasury",
+      priority: "high",
+      tags: "treasury, multi-chain, allocation, development",
       votingOptions: "yes_no_abstain",
       proposalHash: "0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+      chainId: 11155111
+    },
+    {
+      title: "Privacy Protocol Upgrade",
+      description: "Upgrade to latest zero-knowledge proof system for enhanced voting privacy and ballot encryption. This includes implementing state-of-the-art FHE (Fully Homomorphic Encryption) for complete vote privacy while maintaining verifiability.",
+      duration: 14 * 24 * 60 * 60, // 14 days in seconds
+      quorumThreshold: 200,
+      category: "technical",
+      priority: "medium",
+      tags: "privacy, encryption, FHE, zero-knowledge, upgrade",
+      votingOptions: "yes_no_abstain",
+      proposalHash: "0xfedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321",
       chainId: 11155111
     }
   ];
@@ -100,14 +112,14 @@ async function main() {
   const fs = require('fs');
   const path = require('path');
   
-  // Update contract address in contractConfig.ts
-  const contractConfigPath = path.join(__dirname, "../src/lib/contractConfig.ts");
-  let contractConfigContent = fs.readFileSync(contractConfigPath, "utf8");
-  contractConfigContent = contractConfigContent.replace(
-    /CONTRACT_ADDRESS = "0x[^"]*"/,
-    `CONTRACT_ADDRESS = "${contractAddress}"`
+  // Update contract address in contracts.ts
+  const contractsConfigPath = path.join(__dirname, "../src/config/contracts.ts");
+  let contractsConfigContent = fs.readFileSync(contractsConfigPath, "utf8");
+  contractsConfigContent = contractsConfigContent.replace(
+    /CIPHER_CHAIN_VOTE: "0x[^"]*"/,
+    `CIPHER_CHAIN_VOTE: "${contractAddress}"`
   );
-  fs.writeFileSync(contractConfigPath, contractConfigContent);
+  fs.writeFileSync(contractsConfigPath, contractsConfigContent);
   
   console.log("✅ Contract address updated in frontend files");
   

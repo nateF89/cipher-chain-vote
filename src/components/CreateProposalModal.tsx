@@ -11,7 +11,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, Shield, Globe, X } from "lucide-react";
 import { format } from "date-fns";
-import { useCipherChainVote } from "@/hooks/useContract";
+import { useContract } from "@/hooks/useContract";
 import { toast } from "sonner";
 
 interface CreateProposalModalProps {
@@ -31,7 +31,7 @@ export function CreateProposalModal({ isOpen, onClose, onSubmit, selectedChain }
   const [chains, setChains] = useState<string[]>([selectedChain]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { createProposal, isLoading, error } = useCipherChainVote();
+  const { createProposal, isPending: isLoading, error } = useContract();
 
   const availableChains = ["ethereum", "polygon", "arbitrum", "optimism"];
 
