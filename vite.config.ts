@@ -9,7 +9,10 @@ export default defineConfig({
     port: 8080,
   },
   plugins: [react()],
-  define: { global: 'globalThis' },
+  define: { 
+    global: 'globalThis',
+    'process.env': {}
+  },
   optimizeDeps: { 
     include: ['@zama-fhe/relayer-sdk/bundle']
   },

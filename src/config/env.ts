@@ -1,31 +1,42 @@
 // Environment configuration
 // This file contains environment-specific settings
 
+// Safe access to environment variables in browser using Vite's import.meta.env
+const getEnvVar = (key: string, defaultValue: string = ""): string => {
+  try {
+    // Use Vite's import.meta.env for environment variables
+    return import.meta.env[key] || defaultValue;
+  } catch (error) {
+    console.warn(`Failed to access environment variable ${key}:`, error);
+    return defaultValue;
+  }
+};
+
 export const ENV_CONFIG = {
   // Network configuration
   NETWORK: {
-    name: process.env.VITE_NETWORK_NAME || "Sepolia",
-    chainId: parseInt(process.env.VITE_CHAIN_ID || "11155111"),
-    rpcUrl: process.env.VITE_RPC_URL || "https://1rpc.io/sepolia",
-    explorerUrl: process.env.VITE_EXPLORER_URL || "https://sepolia.etherscan.io"
+    name: getEnvVar("VITE_NETWORK_NAME", "Sepolia"),
+    chainId: parseInt(getEnvVar("VITE_CHAIN_ID", "11155111")),
+    rpcUrl: getEnvVar("VITE_RPC_URL", "https://1rpc.io/sepolia"),
+    explorerUrl: getEnvVar("VITE_EXPLORER_URL", "https://sepolia.etherscan.io")
   },
   
   // API Keys (from environment variables)
   API_KEYS: {
-    etherscan: process.env.VITE_ETHERSCAN_API_KEY || "",
-    walletConnect: process.env.VITE_WALLET_CONNECT_PROJECT_ID || ""
+    etherscan: getEnvVar("VITE_ETHERSCAN_API_KEY", "J8PU7AX1JX3RGEH1SNGZS4628BAH192Y3N"),
+    walletConnect: getEnvVar("VITE_WALLET_CONNECT_PROJECT_ID", "e08e99d213c331aa0fd00f625de06e66")
   },
   
   // Contract addresses (from environment variables)
   CONTRACTS: {
-    cipherChainVote: process.env.VITE_CONTRACT_ADDRESS || "0x29e63fa6Ee973217F119728a850c5f2cED153510"
+    cipherChainVote: getEnvVar("VITE_CONTRACT_ADDRESS", "0x29e63fa6Ee973217F119728a850c5f2cED153510")
   },
   
   // Feature flags
   FEATURES: {
-    enableFHE: process.env.VITE_ENABLE_FHE !== "false",
-    enableDemoMode: process.env.VITE_DEMO_MODE === "true",
-    enableDebugLogs: process.env.VITE_DEBUG_LOGS === "true"
+    enableFHE: getEnvVar("VITE_ENABLE_FHE", "true") !== "false",
+    enableDemoMode: getEnvVar("VITE_DEMO_MODE", "false") === "true",
+    enableDebugLogs: getEnvVar("VITE_DEBUG_LOGS", "false") === "true"
   }
 } as const;
 
