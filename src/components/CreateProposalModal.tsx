@@ -28,20 +28,12 @@ export function CreateProposalModal({ isOpen, onClose, onSubmit, selectedChain }
   const [privacy, setPrivacy] = useState("private");
   const [votingDuration, setVotingDuration] = useState("");
   const [endDate, setEndDate] = useState<Date>();
-  const [chains, setChains] = useState<string[]>([selectedChain]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { createProposal, isPending: isLoading, error } = useContract();
 
-  const availableChains = ["ethereum", "polygon", "arbitrum", "optimism"];
-
-  const handleChainToggle = (chain: string) => {
-    setChains(prev => 
-      prev.includes(chain) 
-        ? prev.filter(c => c !== chain)
-        : [...prev, chain]
-    );
-  };
+  // 只使用测试网络
+  const targetChain = "sepolia";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,14 +53,8 @@ export function CreateProposalModal({ isOpen, onClose, onSubmit, selectedChain }
       // Generate proposal hash (in real app, this would be a proper hash)
       const proposalHash = `0x${Math.random().toString(16).substr(2, 8)}${Math.random().toString(16).substr(2, 8)}`;
       
-      // Get chain ID (in real app, this would be the actual chain ID)
-      const chainIdMap: Record<string, number> = {
-        "ethereum": 1,
-        "polygon": 137,
-        "arbitrum": 42161,
-        "optimism": 10,
-      };
-      const chainId = chainIdMap[selectedChain] || 1;
+      // 使用Sepolia测试网络
+      const chainId = 11155111; // Sepolia chain ID
       
       // Create proposal on blockchain
       await createProposal(title, description, proposalHash, duration, chainId);
@@ -80,7 +66,7 @@ export function CreateProposalModal({ isOpen, onClose, onSubmit, selectedChain }
         privacy,
         votingDuration,
         endDate,
-        chains,
+        chain: targetChain,
         createdAt: new Date(),
         proposalHash,
         chainId,
@@ -96,7 +82,6 @@ export function CreateProposalModal({ isOpen, onClose, onSubmit, selectedChain }
       setPrivacy("private");
       setVotingDuration("");
       setEndDate(undefined);
-      setChains([selectedChain]);
       onClose();
     } catch (err) {
       console.error("Error creating proposal:", err);
@@ -106,15 +91,6 @@ export function CreateProposalModal({ isOpen, onClose, onSubmit, selectedChain }
     }
   };
 
-  const getChainDisplayName = (chain: string) => {
-    const names: Record<string, string> = {
-      ethereum: "Ethereum",
-      polygon: "Polygon",
-      arbitrum: "Arbitrum",
-      optimism: "Optimism"
-    };
-    return names[chain] || chain;
-  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -206,35 +182,27 @@ export function CreateProposalModal({ isOpen, onClose, onSubmit, selectedChain }
             </p>
           </div>
 
-          {/* Target Chains */}
+          {/* Target Chain - Only Sepolia Testnet */}
           <div className="space-y-3">
-            <Label className="text-foreground font-medium">Target Chains *</Label>
-            <div className="grid grid-cols-2 gap-3">
-              {availableChains.map((chain) => (
-                <div
-                  key={chain}
-                  onClick={() => handleChainToggle(chain)}
-                  className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                    chains.includes(chain)
-                      ? "border-cyber-cyan bg-cyber-cyan/10"
-                      : "border-muted bg-glass-bg/30 hover:border-cyber-cyan/50"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-foreground font-medium">
-                      {getChainDisplayName(chain)}
-                    </span>
-                    {chains.includes(chain) && (
-                      <div className="w-4 h-4 bg-cyber-cyan rounded-full flex items-center justify-center">
-                        <div className="w-2 h-2 bg-background rounded-full"></div>
-                      </div>
-                    )}
+            <Label className="text-foreground font-medium">Target Network *</Label>
+            <div className="p-4 rounded-lg border border-cyber-cyan bg-cyber-cyan/10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-blue-400/10 flex items-center justify-center">
+                    <span className="text-lg text-blue-400">Ξ</span>
+                  </div>
+                  <div>
+                    <span className="text-foreground font-medium">Sepolia Testnet</span>
+                    <p className="text-sm text-muted-foreground">Ethereum Test Network</p>
                   </div>
                 </div>
-              ))}
+                <Badge variant="secondary" className="text-xs bg-cyber-green/20 text-cyber-green border-cyber-green/30">
+                  Selected
+                </Badge>
+              </div>
             </div>
             <p className="text-sm text-muted-foreground">
-              Select which blockchains this proposal will affect. Multi-chain proposals require consensus across all selected networks.
+              Proposals are created on the Sepolia testnet for secure testing and development.
             </p>
           </div>
 
@@ -281,30 +249,6 @@ export function CreateProposalModal({ isOpen, onClose, onSubmit, selectedChain }
             </div>
           </div>
 
-          {/* Selected Chains Display */}
-          {chains.length > 0 && (
-            <div className="space-y-2">
-              <Label className="text-foreground font-medium">Selected Chains</Label>
-              <div className="flex flex-wrap gap-2">
-                {chains.map((chain) => (
-                  <Badge
-                    key={chain}
-                    variant="outline"
-                    className="border-cyber-cyan/50 text-cyber-cyan px-3 py-1 flex items-center gap-2"
-                  >
-                    {getChainDisplayName(chain)}
-                    <button
-                      type="button"
-                      onClick={() => handleChainToggle(chain)}
-                      className="hover:text-destructive"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Submit Buttons */}
           <div className="flex gap-3 pt-6">
@@ -320,7 +264,7 @@ export function CreateProposalModal({ isOpen, onClose, onSubmit, selectedChain }
               type="submit"
               variant="neon"
               className="flex-1"
-              disabled={!title || !description || !category || chains.length === 0 || !votingDuration || isSubmitting || isLoading}
+              disabled={!title || !description || !category || !votingDuration || isSubmitting || isLoading}
             >
               {isSubmitting ? "Creating..." : "Create Proposal"}
             </Button>
